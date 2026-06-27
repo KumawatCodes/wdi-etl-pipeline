@@ -27,12 +27,12 @@ Progress: **0 / 10 phases complete**
 ---
 
 ## Phase 2 — Cleaning & Transformation
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] **Drop constant columns** — Owner: Tamanna — Remove `FREQ`, `OBS_STATUS`, `COMP_BREAKDOWN_1/2/3`, and SDMX plumbing columns using pandas. Goal: reduce 41 columns to only what the schema needs.
-- [ ] **Collapse label pairs** — Owner: Tamanna — Merge each `CODE`/`CODE_LABEL` pair into single lookup-ready fields. Goal: clean dimension source data, no duplicate columns.
-- [ ] **Build `dim_age` parser** — Owner: Tamanna — Decode codes like `Y15T24` into readable labels ("15 to 24 years") using regex or a manual dict; handle `_T` and "and over" style codes. Goal: all 22 AGE codes decode correctly.
-- [ ] **Null handling** — Owner: Tamanna — Drop/flag rows where `OBS_VALUE` is null using pandas. Goal: keep nulls under 1% in key columns.
+- [x] **Drop constant columns** — Owner: Tamanna — Remove `FREQ`, `OBS_STATUS`, `COMP_BREAKDOWN_1/2/3`, and SDMX plumbing columns using pandas. Goal: reduce 41 columns to only what the schema needs.
+- [x] **Collapse label pairs** — Owner: Tamanna — Merge each `CODE`/`CODE_LABEL` pair into single lookup-ready fields. Goal: clean dimension source data, no duplicate columns.
+- [x] **Build `dim_age` parser** — Owner: Tamanna — Decode codes like `Y15T24` into readable labels ("15 to 24 years") using regex or a manual dict; handle `_T` and "and over" style codes. Goal: all 22 AGE codes decode correctly.
+- [x] **Null handling** — Owner: Tamanna — Drop/flag rows where `OBS_VALUE` is null using pandas. Goal: keep nulls under 1% in key columns.
 
 **Definition of Done:** Output matches `docs/DATA_DICTIONARY.md` shapes exactly, all 22 AGE codes decode correctly, nulls under threshold.
 
