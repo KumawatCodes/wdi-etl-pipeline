@@ -1,6 +1,6 @@
 DROP_COLUMNS  = [
     "FREQ",
-    "OBS_STATUS",
+    # "OBS_STATUS",  need to remove for the start schema 
     "COMP_BREAKDOWN_1",
     "COMP_BREAKDOWN_2",
     "COMP_BREAKDOWN_3",
@@ -66,12 +66,24 @@ AGE_MAPPING = {
     "Y15T24": "15 to 24 years old",
     "Y15T64": "15 to 64 years old",
     "Y20T24": "20 to 24 years old",
+    "Y25T29": "25 to 29 years old",      # <-- MISSING (Added now)
     "Y25T34": "25 to 34 years old",
+    "Y30T34": "30 to 34 years old",      # <-- MISSING (Added now)
+    "Y35T39": "35 to 39 years old",      # <-- MISSING (Added now)
     "Y35T44": "35 to 44 years old",
+    "Y40T44": "40 to 44 years old",      # <-- MISSING (Added now)
+    "Y45T49": "45 to 49 years old",      # <-- MISSING (Added now)
     "Y45T54": "45 to 54 years old",
+    "Y50T54": "50 to 54 years old",      # <-- MISSING (Added now)
+    "Y55T59": "55 to 59 years old",      # <-- MISSING (Added now)
     "Y55T64": "55 to 64 years old",
+    "Y60T64": "60 to 64 years old",      # <-- MISSING (Added now)
+    "Y65T69": "65 to 69 years old",      # <-- MISSING (Added now)
     "Y65T74": "65 to 74 years old",
+    "Y70T74": "70 to 74 years old",      # <-- MISSING (Added now)
+    "Y75T79": "75 to 79 years old",      # <-- MISSING (Added now)
     "Y75T84": "75 to 84 years old",
+    "Y80T84": "80 to 84 years old",      # <-- MISSING (Added now)
     "Y_GE15": "15 years old and over",
     "Y_GE18": "18 years old and over",
     "Y_GE65": "65 years old and over",
@@ -104,7 +116,7 @@ def parse_age_column(df):
     if df["AGE"].isna().any():
         raise ValueError("AGE contains missing values.")
 
-    expected_labels = df["AGE"].apply(parse_age_code)
+    expected_labels = df["AGE"].map(parse_age_code)
 
     if "AGE_LABEL" in df.columns:
 
