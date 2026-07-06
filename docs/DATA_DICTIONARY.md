@@ -49,18 +49,18 @@ These describe the *shape* of the SDMX export itself, not the data — never var
 
 Common codes seen in this dataset, decoded:
 
-| Code | Meaning |
-|---|---|
-| `_T` | Total (no breakdown applied) |
-| `_Z` | Not applicable |
-| `M` | Male |
-| `F` | Female |
-| `RUR` | Rural |
-| `URB` | Urban |
-| `A` (in FREQ) | Annual |
-| `A` (in OBS_STATUS) | Actual / Normal value |
-| `Y##T##` (in AGE) | Age band from ## to ## years, e.g. `Y15T24` = 15 to 24 years |
-
+| Code                | Meaning                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `_T`                | Total (no breakdown applied)                                                                                                           |
+| `_Z`                | Not applicable                                                                                                                         |
+| `M`                 | Male                                                                                                                                   |
+| `F`                 | Female                                                                                                                                 |
+| `RUR`               | Rural                                                                                                                                  |
+| `URB`               | Urban                                                                                                                                  |
+| `A` (in FREQ)       | Annual                                                                                                                                 |
+| `A` (in OBS_STATUS) | Actual / Normal value                                                                                                                  |
+| `Y##T##` (in AGE)   | Age band from ## to ## years, e.g. `Y15T24` = 15 to 24 years                                                                           |
+| Indicator codes     | WB_WDI_ prefix + dots → underscores                                                        e.g. NY.GDP.PCAP.KD → WB_WDI_NY_GDP_PCAP_KD |
 ## Open Question
 
 `AGE` has 22 distinct codes that need full decoding (not all are simple `Y##T##` ranges — some may be `Y_GE65` style "65 and over" codes). Full lookup table to be built when `dim_age` is implemented — owner TBD.

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: wdi_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wdi_user
+      POSTGRES_PASSWORD: wdi_pass
+      POSTGRES_DB: wdi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - wdi_pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      # ↑ Postgres auto-runs any .sql file in this folder on first container start.
+      # If the container already exists (volume present), this is skipped.
+      # To re-run: docker compose down -v && docker compose up -d
+
+volumes:
+  wdi_pgdata:

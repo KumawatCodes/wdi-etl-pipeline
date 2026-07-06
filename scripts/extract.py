@@ -23,7 +23,7 @@ import pandas as pd
 drop_cols = [
     "STRUCTURE", "STRUCTURE_ID", "ACTION",
     "FREQ", "FREQ_LABEL",
-    "OBS_STATUS", "OBS_STATUS_LABEL",
+    # "OBS_STATUS", "OBS_STATUS_LABEL",
     "COMP_BREAKDOWN_1", "COMP_BREAKDOWN_1_LABEL",
     "COMP_BREAKDOWN_2", "COMP_BREAKDOWN_2_LABEL",
     "COMP_BREAKDOWN_3", "COMP_BREAKDOWN_3_LABEL",
@@ -37,7 +37,7 @@ drop_cols = [
 ]
 
 # no. of rows to pull
-chunk_size= 100_000
+chunk_size= 200_000
 
 def extract_chunks(input_path:str):
     """

@@ -41,11 +41,11 @@ Progress: **0 / 10 phases complete**
 ---
 
 ## Phase 3 — Loading
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] **Build dimension loaders** — Owner: Himanshu — Insert unique values into all 6 dimension tables using SQLAlchemy + psycopg2. Goal: every dimension table populated, no duplicates.
-- [ ] **Build fact loader** — Owner: Himanshu — Resolve cleaned rows into foreign keys, insert into `fact_wdi_data`. Goal: every fact row correctly linked, no orphaned FKs.
-- [ ] **Validation query** — Owner: Himanshu — Run the India-2020-GDP check filtered to Total/Total/Total using raw SQL. Goal: confirm grain is correct, exactly one row returned.
+- [x] **Build dimension loaders** — Owner: Himanshu — Insert unique values into all 6 dimension tables using SQLAlchemy + psycopg2. Goal: every dimension table populated, no duplicates.
+- [x] **Build fact loader** — Owner: Himanshu — Resolve cleaned rows into foreign keys, insert into `fact_wdi_data`. Goal: every fact row correctly linked, no orphaned FKs.
+- [x] **Validation query** — Owner: Himanshu — Run the India-2020-GDP check filtered to Total/Total/Total using raw SQL. Goal: confirm grain is correct, exactly one row returned.
 
 **Definition of Done:** All 6 tables populated, validation query returns exactly one row.
 
@@ -54,10 +54,10 @@ Progress: **0 / 10 phases complete**
 ---
 
 ## Phase 4 — Local Infra & Automation
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] **Docker Compose setup** — Owner: Himanshu (Tamanna shadows hands-on, runs commands herself) — Define a Postgres service (image, ports, volume, env vars) in `docker-compose.yml`. Goal: one command spins up a working local database.
-- [ ] **Build `run_pipeline.sh`** — Owner: Himanshu — Chain extract → clean → load into one executable Bash script. Goal: full pipeline runs end-to-end, under 2 minutes.
+- [x] **Docker Compose setup** — Owner: Himanshu (Tamanna shadows hands-on, runs commands herself) — Define a Postgres service (image, ports, volume, env vars) in `docker-compose.yml`. Goal: one command spins up a working local database.
+- [x] **Build `run_pipeline.sh`** — Owner: Himanshu — Chain extract → clean → load into one executable Bash script. Goal: full pipeline runs end-to-end, under 2 minutes.
 
 **Definition of Done:** `./run_pipeline.sh` works from a clean repo clone.
 

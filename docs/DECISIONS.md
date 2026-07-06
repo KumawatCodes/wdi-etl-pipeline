@@ -23,5 +23,8 @@ Locking in 5 foreign keys on the fact table means a single (country, indicator, 
 Originally scoped as a local-only Phase 1 (no cloud, per the 3-phase roadmap). Team decision: pull forward Supabase (Gold layer hosting), Streamlit (public dashboard), self-hosted GitHub Actions runner, and daily cron scheduling into the current build, ahead of the original phase boundary. Tradeoff acknowledged: more infrastructure to learn before the core ETL/schema work is proven out, in exchange for a more complete end-to-end project sooner.
 
 ---
-
-*New entries go at the bottom, dated, in the same short format: what was considered → what was decided → why.*
+**2026-07 — Indicator code format discovery**
+Validation query returned 0 rows on first run. Root cause: SDMX export 
+prefixes all indicator codes with WB_WDI_ and replaces dots with underscores.
+Original brief assumed plain NY.GDP.PCAP.KD format. All downstream queries
+and dashboard filters must use the WB_WDI_ prefixed format.

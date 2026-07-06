@@ -103,45 +103,59 @@ def parse_age_code(age_code: str) -> str:
 
     return AGE_MAPPING[age_code]
 
+# def parse_age_column(df):
+#     """
+#     Decode AGE codes (apply method).
+
+#     If AGE_LABEL exists:
+#         Validate it against the parser.
+
+#     Otherwise:
+#         Create AGE_LABEL.
+#     """
+#     if df["AGE"].isna().any():
+#         raise ValueError("AGE contains missing values.")
+
+#     expected_labels = df["AGE"].apply(parse_age_code)
+
+#     if "AGE_LABEL" in df.columns:
+
+#         mismatches = (expected_labels.str.strip() != df["AGE_LABEL"].str.strip())
+
+#         if mismatches.any():
+
+#             mismatch_rows = df.loc[
+#                 mismatches,
+#                 ["AGE", "AGE_LABEL"]
+#             ].copy()
+
+#             mismatch_rows["EXPECTED_LABEL"] = expected_labels[mismatches]
+
+#             raise ValueError(
+#                 f"Found {len(mismatch_rows)} AGE label mismatches:\n\n"
+#                 f"{mismatch_rows.to_string(index=True)}"
+#             )
+
+#     else:
+
+#         df["AGE_LABEL"] = expected_labels
+
+#     return df
+
 def parse_age_column(df):
     """
-    Decode AGE codes.
-
-    If AGE_LABEL exists:
-        Validate it against the parser.
-
-    Otherwise:
-        Create AGE_LABEL.
+    Decode AGE codes using vectorized map.
     """
-    if df["AGE"].isna().any():
-        raise ValueError("AGE contains missing values.")
-
-    expected_labels = df["AGE"].map(parse_age_code)
-
-    if "AGE_LABEL" in df.columns:
-
-        mismatches = (expected_labels.str.strip() != df["AGE_LABEL"].str.strip())
-
-        if mismatches.any():
-
-            mismatch_rows = df.loc[
-                mismatches,
-                ["AGE", "AGE_LABEL"]
-            ].copy()
-
-            mismatch_rows["EXPECTED_LABEL"] = expected_labels[mismatches]
-
-            raise ValueError(
-                f"Found {len(mismatch_rows)} AGE label mismatches:\n\n"
-                f"{mismatch_rows.to_string(index=True)}"
-            )
-
-    else:
-
-        df["AGE_LABEL"] = expected_labels
-
+    # Map the AGE column using the dictionary
+    df['AGE_LABEL'] = df['AGE'].map(AGE_MAPPING)
+    
+    # Check if any AGE codes were not found in the dictionary
+    unknown_mask = df['AGE_LABEL'].isna() & df['AGE'].notna()
+    if unknown_mask.any():
+        unknown_codes = df.loc[unknown_mask, 'AGE'].unique()
+        raise ValueError(f"Unknown AGE codes found: {list(unknown_codes)}")
+    
     return df
-
 
 def handle_null_obs_values(df):
     """
