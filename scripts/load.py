@@ -1,158 +1,152 @@
-"""
-load.py — Stage 3 of the WDI ETL pipeline (Simple Staging Table Version).
+import polars as pl
+from sqlalchemy import create_engine, text
 
-This version uses the "Staging Table" pattern.
-1. Dump all cleaned chunks into a flat staging table using pandas.to_sql().
-2. After all chunks are loaded, run SQL queries to populate dims and fact.
-3. Drop the staging table.
+class Load:
 
-All database connections are passed in explicitly from run_pipeline.py.
-"""
-
-import logging
-from sqlalchemy import text
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    @staticmethod
+    def get_engine(db_url:str):
+        return create_engine(db_url)
 
 
-def create_staging_table(engine):
-    """Create the flat staging table. No constraints, just raw columns."""
-
-    with engine.connect() as conn:
-        conn.execute(text("""
-            DROP TABLE IF EXISTS staging_wdi_raw CASCADE;
-            CREATE TABLE staging_wdi_raw (
-                ref_area VARCHAR(10),
-                ref_area_label VARCHAR(255),
-                indicator VARCHAR(50),
-                indicator_label TEXT,
-                sex VARCHAR(10),
-                age VARCHAR(10),
-                age_label VARCHAR(100),
-                urbanisation VARCHAR(10),
-                time_period INTEGER,
-                obs_value FLOAT,
-                unit_measure VARCHAR(20)
-            );
-        """))
-        conn.commit()
-        logging.info("Staging table created.")
-
-
-def load_chunk(engine, df):
-    """Append a cleaned chunk to the staging table."""
-    if df.empty:
-        return 0
-
-    # 1. Convert all column names to lowercase to match the staging table schema
-    df.columns = df.columns.str.lower()
-
-    # 2. Define the exact columns the staging table expects
-    staging_columns = [
-        'ref_area', 'ref_area_label', 
-        'indicator', 'indicator_label', 
-        'sex', 
-        'age', 'age_label', 
-        'urbanisation', 
-        'time_period', 
-        'obs_value', 
-        'unit_measure'
-    ]
-
-    # 3. Keep only the columns that exist in the DataFrame AND are in the staging table
-    columns_to_load = [col for col in staging_columns if col in df.columns]
-    df_to_load = df[columns_to_load]
-
-    # 4. Insert into the staging table
-    df_to_load.to_sql('staging_wdi_raw', engine, if_exists='append', index=False)
-    
-    logging.info(f"Loaded {len(df_to_load)} rows into staging.")
-    return len(df_to_load)
-
-def finalize_load(engine):
-    """
-    Run after all chunks are loaded.
-    Pure SQL batch operations to populate dims and fact.
-    """
-    logging.info("Finalizing load with SQL batch operations...")
-    
-    with engine.begin() as conn:
-        
-        # 1. Populate Country Dimension
-        conn.execute(text("""
-            INSERT INTO dim_country (country_code, country_name)
-            SELECT DISTINCT ref_area, ref_area_label
-            FROM staging_wdi_raw
-            ON CONFLICT (country_code) DO NOTHING;
-        """))
-        
-        # 2. Populate Indicator Dimension
-        conn.execute(text("""
-            INSERT INTO dim_indicator (indicator_code, indicator_name, unit_measure)
-            SELECT DISTINCT indicator, indicator_label, unit_measure
-            FROM staging_wdi_raw
-            ON CONFLICT (indicator_code) DO NOTHING;
-        """))
-        
-        # 3. Populate Sex Dimension
-        conn.execute(text("""
-            INSERT INTO dim_sex (sex_code, sex_label)
-            SELECT DISTINCT sex, 
-                   CASE WHEN sex = '_T' THEN 'Total' WHEN sex = 'F' THEN 'Female' WHEN sex = 'M' THEN 'Male' ELSE sex END
-            FROM staging_wdi_raw
-            ON CONFLICT (sex_code) DO NOTHING;
-        """))
-        
-        # 4. Populate Age Dimension
-        conn.execute(text("""
-            INSERT INTO dim_age (age_code, age_label)
-            SELECT DISTINCT age, age_label
-            FROM staging_wdi_raw
-            WHERE age IS NOT NULL
-            ON CONFLICT (age_code) DO NOTHING;
-        """))
-        
-        # 5. Populate Urbanisation Dimension
-        conn.execute(text("""
-            INSERT INTO dim_urbanisation (urban_code, urban_label)
-            SELECT DISTINCT urbanisation, 
-                   CASE WHEN urbanisation = '_T' THEN 'Total' WHEN urbanisation = 'URB' THEN 'Urban' WHEN urbanisation = 'RUR' THEN 'Rural' ELSE urbanisation END
-            FROM staging_wdi_raw
-            ON CONFLICT (urban_code) DO NOTHING;
-        """))
-        
-        # 6. Populate Time Dimension
-        conn.execute(text("""
-            INSERT INTO dim_date (year)
-            SELECT DISTINCT time_period
-            FROM staging_wdi_raw
-            ON CONFLICT (year) DO NOTHING;
-        """))
-
-        # 7. Populate the Fact Table (FIXED: date_id, urban_id, correct column names)
-        conn.execute(text("""
-            INSERT INTO fact_wdi_data (
-                country_id, indicator_id, date_id, sex_id, age_id, urban_id, obs_value
+    # Building Dimensions tables
+    @staticmethod
+    def build_dim_country(df:pl.DataFrame) ->pl.DataFrame:
+        dim_country = (df.select(["country_code","country_name"])
+              .unique()
+              .sort("country_code")
             )
-            SELECT 
-                c.country_id,
-                i.indicator_id,
-                d.date_id,
-                s.sex_id,
-                a.age_id,
-                u.urban_id,
-                raw.obs_value
-            FROM staging_wdi_raw raw
-            JOIN dim_country c ON raw.ref_area = c.country_code
-            JOIN dim_indicator i ON raw.indicator = i.indicator_code
-            JOIN dim_date d ON raw.time_period = d.year
-            JOIN dim_sex s ON raw.sex = s.sex_code
-            JOIN dim_age a ON raw.age = a.age_code
-            JOIN dim_urbanisation u ON raw.urbanisation = u.urban_code
-            ON CONFLICT (country_id, indicator_id, date_id, sex_id, age_id, urban_id) DO NOTHING;
-        """))
-        
-        # 8. Drop the staging table (cleanup)
-        conn.execute(text("DROP TABLE staging_wdi_raw;"))
+        return dim_country
+
+    @staticmethod
+    def build_dim_indicator(df:pl.DataFrame) ->pl.DataFrame:
+        dim_indicator = (df.select(["indicator_code","indicator_name","unit_measure"])
+                .unique()
+                .sort("indicator_code")
+            )
     
-    logging.info("✅ Finalization complete. Fact and Dimensions populated.")
+        return dim_indicator
+
+    @staticmethod
+    def build_dim_date(df:pl.DataFrame) ->pl.DataFrame:
+        dim_date = (df.select(["year"])
+                .unique()
+                .sort("year")
+            )
+        return dim_date
+
+    @staticmethod
+    def build_dim_age(df:pl.DataFrame) ->pl.DataFrame:
+        dim_age = (df.select(["age_code","age_label"])
+                .unique()
+                .sort("age_code")
+                )
+        return dim_age
+    
+    @staticmethod
+    def build_dim_sex(df:pl.DataFrame) ->pl.DataFrame:
+        dim_sex = (df.select(["sex_code","sex_label"])
+                .unique()
+                .sort("sex_code")
+            )
+        return dim_sex
+
+    @staticmethod
+    def build_dim_urbanisation(df:pl.DataFrame) ->pl.DataFrame:
+        dim_urbanisation = (df.select(["urban_code","urban_label"])
+                    .unique()
+                    .sort("urban_code")
+                )
+        return dim_urbanisation\
+
+
+    # loading tables
+
+    @staticmethod
+    def load_table(df:pl.DataFrame,table_name:str,engine):
+        df.write_database(
+            table_name=table_name,
+            connection=engine,
+            if_table_exists="append"
+        )
+        print(f"{table_name} loaded")
+
+    @staticmethod
+    def load_all(df:pl.DataFrame, engine):
+
+        dim_country = Load.build_dim_country(df)
+        dim_indicator = Load.build_dim_indicator(df)
+        dim_date = Load.build_dim_date(df)
+        dim_age = Load.build_dim_age(df)
+        dim_sex = Load.build_dim_sex(df)
+        dim_urbanisation = Load.build_dim_urbanisation(df)
+
+        # print(type(dim_country))
+        Load.load_table(dim_country,      "dim_country",      engine)
+        Load.load_table(dim_indicator,    "dim_indicator",    engine)
+        Load.load_table(dim_date,         "dim_date",         engine)
+        Load.load_table(dim_sex,          "dim_sex",          engine)
+        Load.load_table(dim_age,          "dim_age",          engine)
+        Load.load_table(dim_urbanisation, "dim_urbanisation", engine)
+
+        # fact table building
+        with engine.connect() as conn:
+            country_lookup = {
+                r[0]: r[1] 
+                for r in conn.execute(text("SELECT country_code, country_id FROM dim_country"))
+                }
+            indicator_lookup  = {
+                r[0]: r[1] 
+                for r in conn.execute(text("SELECT indicator_code, indicator_id FROM dim_indicator"))
+                }
+            date_lookup = {
+                r[0]: r[1] 
+                for r in conn.execute(text("SELECT year, date_id FROM dim_date"))
+                }
+            sex_lookup = {
+                r[0]: r[1] 
+            for r in conn.execute(text("SELECT sex_code, sex_id FROM dim_sex"))
+                }
+            age_lookup = {
+                r[0]: r[1] 
+                for r in conn.execute(text("SELECT age_code, age_id FROM dim_age"))
+                }
+            urban_lookup = {
+                r[0]: r[1] 
+                for r in conn.execute(text("SELECT urban_code, urban_id FROM dim_urbanisation"))
+                }
+
+        #Mapping lookups
+        fact = df.select([
+            "country_code", "indicator_code", "year",
+            "sex_code", "age_code", "urban_code",
+            "obs_value", "obs_status"
+        ])
+
+        fact = fact.join(
+            pl.DataFrame({"country_code":list(country_lookup.keys()),"country_id":list(country_lookup.values())}),
+            on="country_code",how="left"
+        ).join(
+            pl.DataFrame({"indicator_code":list(indicator_lookup.keys()),"indicator_id":list(indicator_lookup.values())}),
+            on="indicator_code",how="left"
+        ).join(
+            pl.DataFrame({"year":list(date_lookup.keys()),"date_id":list(date_lookup.values())}),
+            on="year",how="left"
+        ).join(
+            pl.DataFrame({"sex_code":list(sex_lookup.keys()),"sex_id":list(sex_lookup.values())}),
+            on="sex_code",how="left"
+        ).join(
+            pl.DataFrame({"age_code":list(age_lookup.keys()),"age_id":list(age_lookup.values())}),
+            on="age_code",how="left"
+        ).join(
+            pl.DataFrame({"urban_code":list(urban_lookup.keys()),"urban_id":list(urban_lookup.values())}),
+            on="urban_code",how="left"
+        )
+
+
+        fact = fact.select([
+            "country_id", "indicator_id", "date_id",
+            "sex_id", "age_id", "urban_id",
+            "obs_value", "obs_status"
+        ])
+
+        Load.load_table(fact, "fact_wdi_data", engine)

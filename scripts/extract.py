@@ -1,105 +1,61 @@
-"""
-Reads the raw SDMX export in fixed-size chunks (file -> 3.8 GB,8,894,932 rows.
-- too large to load in one short on my machine).
-
-Drop columns confirmed constant or structurally irrelevant via the 
-cardinality check(see docs/DATA_DICTIONARY.md for the full reasoning).
-Does NOT collapse CODE/LABEL pairs, parse AGE codes, or handle nulls-(will done in clean.py)
-
-This script is a GENERATOR. It yields chunks (DataFrames) one at a time.
-clean.py will receive these chunks and process them on the fly.
-Memory usage stays flat (~500MB) regardless of the source file size.
-
-Usage:
-    uv run python scripts/extract.py data/raw/WB_WDI.csv
-    uv run python scripts/extract.py data/samples/sample_5000.csv   # for sample testing
-"""
-
+import polars as pl
 import sys
-from pathlib import Path 
-import pandas as pd
-
-# columns to drop
-drop_cols = [
-    "STRUCTURE", "STRUCTURE_ID", "ACTION",
-    "FREQ", "FREQ_LABEL",
-    # "OBS_STATUS", "OBS_STATUS_LABEL",
-    "COMP_BREAKDOWN_1", "COMP_BREAKDOWN_1_LABEL",
-    "COMP_BREAKDOWN_2", "COMP_BREAKDOWN_2_LABEL",
-    "COMP_BREAKDOWN_3", "COMP_BREAKDOWN_3_LABEL",
-    "AGG_METHOD", "AGG_METHOD_LABEL",
-    "UNIT_TYPE", "UNIT_TYPE_LABEL",
-    "DECIMALS", "DECIMALS_LABEL",
-    "DATABASE_ID", "DATABASE_ID_LABEL",
-    "TIME_FORMAT", "TIME_FORMAT_LABEL",
-    "UNIT_MULT", "UNIT_MULT_LABEL",
-    "OBS_CONF", "OBS_CONF_LABEL",
+# Required Columns(column pruning)
+req_cols = [
+    "REF_AREA",
+    "REF_AREA_LABEL",
+    "INDICATOR",
+    "INDICATOR_LABEL",
+    "UNIT_MEASURE",
+    "TIME_PERIOD",
+    "SEX",
+    "SEX_LABEL",
+    "AGE",
+    "AGE_LABEL",
+    "URBANISATION",
+    "URBANISATION_LABEL",
+    "OBS_VALUE",
+    "OBS_STATUS",
 ]
 
-# no. of rows to pull
-chunk_size= 200_000
+# required indicator
+indicat_req = [
+    "WB_WDI_NY_GDP_PCAP_KD", "WB_WDI_NY_GDP_MKTP_KD_ZG",
+    "WB_WDI_FP_CPI_TOTL_ZG", "WB_WDI_NE_TRD_GNFS_ZS",
+    "WB_WDI_SP_DYN_LE00_IN", "WB_WDI_SH_DYN_MORT",
+    "WB_WDI_SH_STA_MMRT", "WB_WDI_SH_XPD_CHEX_GD_ZS",
+    "WB_WDI_SE_SEC_ENRR", "WB_WDI_SE_TER_ENRR",
+    "WB_WDI_IT_NET_USER_ZS", "WB_WDI_IT_CEL_SETS_P2",
+    "WB_WDI_SP_POP_TOTL", "WB_WDI_SP_POP_GROW",
+    "WB_WDI_SL_UEM_TOTL_ZS", "WB_WDI_SL_TLF_CACT_ZS",
+    "WB_WDI_EN_GHG_ALL_MT_CE_AR5", "WB_WDI_EG_USE_PCAP_KG_OE",
+    "WB_WDI_EG_ELC_ACCS_ZS", "WB_WDI_EG_USE_COMM_FO_ZS"
+]
 
-def extract_chunks(input_path:str):
-    """
-    A generator that yields cleaned chunks of the CSV.
+class Extraction:
 
-    Yields:
-        pd.DataFrame: A chunk with constant/plumbing columns dropped.
-    """
-    file_path= Path(input_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Cannot find {input_path}")
-    
-    total_rows_read= 0
+    @staticmethod
+    def csv_extraction(file_path:str):
 
-    # CSV reader
-    reader = pd.read_csv(file_path,chunksize=chunk_size, low_memory=False)
+        lf = pl.scan_csv(file_path)
+        lf = lf.select(req_cols)
+        lf = (lf.filter(pl.col("INDICATOR").is_in(indicat_req))
+                 .filter(pl.col("TIME_PERIOD").cast(pl.Int32) <= 2023))
+        lf = Extraction.drop_null(lf)
+        return lf
 
-    for i, chunk in enumerate(reader):
-        total_rows_read += len(chunk)
-
-        #Drop columns that exist in this chunk
-        cols_to_drop = [c for c in drop_cols if c in chunk.columns]
-        if cols_to_drop:
-            chunk= chunk.drop(columns=cols_to_drop)
-        
-        print(f" [Extract] Chunk {i+1}: {len(chunk)} rows read. Total so far: {total_rows_read}")
-
-        #YIELD: Send this chunk to the caller (clean.py) and PAUSE execution
-        #memory is freed once clean.py finishes with this chunk.
-        yield chunk
-    
-    print(f"\n[Extract] Extraction complete. Total rows streamed: {total_rows_read}")
-
-def verify_row_integrity(input_path: str, total_extracted_rows: int) -> bool:
-    """
-    cross-check: count actual lines in the source file (minus header) and compare
-    against rows extracted. Catches silent row loss.
-
-    Note: This opens the file seperately. Only run this during initial testing,
-    not on every pipeline run (it adds an extra 30 sec to scan 3.8GB).
-    """
-    with open(input_path, "r", encoding="utf-8",errors="replace") as f:
-        line_count = sum(1 for _ in f) - 1 # minus header row
-    
-    matches = (line_count == total_extracted_rows)
-    print(f"\n[Integrity Check] File has {line_count} rows, Extracted {total_extracted_rows} -> {'✅ MATCH' if matches else '❌ MISMATCH'}")
-    return matches
+    @staticmethod
+    def drop_null(lf:pl.LazyFrame):
+        lf = lf.filter(
+            pl.col("OBS_VALUE").is_not_null()
+        )
+        return lf
 
 if __name__ == "__main__":
-    # main block to run furst
-    # it test the generator by counting all rows and verifying integrity.
 
-    if len(sys.argv) != 2:
-        print("Usage: uv run python scripts/extract.py <path_to_csv>")
+    if len(sys.argv) !=2:
+        print("error")
         sys.exit(1)
-    
-    csv_path = sys.argv[1]
 
-    # text generator
-    total = 0
-    for chunk in extract_chunks(csv_path):
-        total += len(chunk)
-    
-    # verifying integrity 
-    verify_row_integrity(csv_path,total)
+    file_path = sys.argv[1]
+    Extraction.csv_extraction(file_path)
