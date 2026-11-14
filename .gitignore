@@ -16,9 +16,28 @@ __pycache__/
 # Environment / secrets
 .env
 .env.local
+.env.compose
+.env.ec2
+keys/
 
 # Docker
 *.log
 
 # OS
 .DS_Store
+
+# Terraform credentials, state, and provider cache
+*.tfvars
+*.tfvars.json
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform/tfplan
+**/.terraform/*
+crash.log
+crash.*.log
+
+# Deployment artifacts and database backups
+backups/
+*.dump
+*.dump.gz

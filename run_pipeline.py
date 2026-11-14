@@ -1,9 +1,20 @@
-from scripts.extract import Extraction
-from scripts.transform import Transformation
-from scripts.load import Load
+from etl.extract import Extraction
+from etl.transform import Transformation
+from etl.load import Load
 from core.logging import logger
+import os
+from dotenv import load_dotenv
+# DB_URL = "postgresql+psycopg2://wdi_user:wdi_pass@localhost:5432/wdi_db"
+load_dotenv()  # loads .env
 
-DB_URL = "postgresql+psycopg2://wdi_user:wdi_pass@localhost:5432/wdi_db"
+# Build the correct URL
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "wdi_db")
+DB_USER = os.getenv("DB_USER", "wdi_user")
+DB_PASS = os.getenv("DB_PASSWORD", "wdi_pass")
+
+DB_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 FILE_PATH = "data/raw/WB_WDI.csv"
 
 def run():

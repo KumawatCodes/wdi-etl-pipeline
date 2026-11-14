@@ -1,17 +1,108 @@
+name: wdi-etl-pipeline
+
 services:
   postgres:
-    image: postgres:17
+    image: postgres:17.6
     container_name: wdi-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: wdi_user
-      POSTGRES_PASSWORD: wdi_pass
-      POSTGRES_DB: wdi_db
+      POSTGRES_USER: ${DB_USER:-wdi_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.compose}
+      POSTGRES_DB: ${DB_NAME:-wdi_db}
+      SUPERSET_READER_PASSWORD: ${SUPERSET_READER_PASSWORD:?Set SUPERSET_READER_PASSWORD in .env.compose}
     ports:
-      - "5432:5432"
+      # Local clients and an SSH tunnel only. PostgreSQL is not exposed publicly.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
+      # Keep this named volume stable so existing local warehouse data is reused.
       - wdi_pgdata:/var/lib/postgresql/data
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-create-superset-metadata.sql:ro
+      - ./backups:/backups:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-wdi_user} -d ${DB_NAME:-wdi_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  superset:
+    image: wdi-superset:6.0.0-pgdriver1
+    build:
+      context: ./superset-image
+    container_name: wdi-superset
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?Set SUPERSET_SECRET_KEY in .env.compose}
+      POSTGRES_USER: ${DB_USER:-wdi_user}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.compose}
+      SUPERSET_LOAD_EXAMPLES: "no"
+    ports:
+      # Reach this only via SSH forwarding: localhost:8088 -> EC2 localhost:8088.
+      - "127.0.0.1:8088:8088"
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+    command:
+      - /bin/sh
+      - -ec
+      - exec gunicorn --bind 0.0.0.0:8088 --workers 2 --worker-class gthread --threads 8 --timeout 120 'superset.app:create_app()'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  superset-bootstrap:
+    image: wdi-superset:6.0.0-pgdriver1
+    build:
+      context: ./superset-image
+    profiles: ["bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?Set SUPERSET_SECRET_KEY in .env.compose}
+      POSTGRES_USER: ${DB_USER:-wdi_user}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.compose}
+      SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME:?Set SUPERSET_ADMIN_USERNAME in .env.compose}
+      SUPERSET_ADMIN_FIRST_NAME: ${SUPERSET_ADMIN_FIRST_NAME:?Set SUPERSET_ADMIN_FIRST_NAME in .env.compose}
+      SUPERSET_ADMIN_LAST_NAME: ${SUPERSET_ADMIN_LAST_NAME:?Set SUPERSET_ADMIN_LAST_NAME in .env.compose}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:?Set SUPERSET_ADMIN_EMAIL in .env.compose}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?Set SUPERSET_ADMIN_PASSWORD in .env.compose}
+      SUPERSET_LOAD_EXAMPLES: "no"
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        superset db upgrade
+        superset init
+        if ! superset fab list-users | grep -qF "username:$${SUPERSET_ADMIN_USERNAME}"; then
+          superset fab create-admin \
+            --username "$${SUPERSET_ADMIN_USERNAME}" \
+            --firstname "$${SUPERSET_ADMIN_FIRST_NAME}" \
+            --lastname "$${SUPERSET_ADMIN_LAST_NAME}" \
+            --email "$${SUPERSET_ADMIN_EMAIL}" \
+            --password "$${SUPERSET_ADMIN_PASSWORD}"
+        else
+          echo "Configured bootstrap administrator exists; keeping its current credentials."
+        fi
 
 volumes:
   wdi_pgdata:

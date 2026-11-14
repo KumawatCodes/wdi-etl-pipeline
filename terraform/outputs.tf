@@ -1,20 +1,19 @@
-output "rds_endpoint"{
-    description = "RDS  instance rds_endpoint"
-    value = aws_db_instance.wdi_postgres.endpoint
+output "instance_id" {
+  description = "EC2 instance ID used by the start, stop, status, and URL scripts."
+  value       = aws_instance.wdi_host.id
 }
 
-output "rds_address"{
-    description = "RDS hostname"
-    value = aws_db_instance.wdi_postgres.address
+output "aws_region" {
+  description = "AWS region containing the EC2 instance."
+  value       = var.aws_region
 }
 
-output "rds_port"{
-    description = "RDS port"
-    value = aws_db_instance.wdi_postgres.port
+output "instance_type" {
+  description = "Selected EC2 instance type."
+  value       = aws_instance.wdi_host.instance_type
 }
 
-output "rds_username"{
-    description = "Master username"
-    value = aws_db_instance.wdi_postgres.username
-    sensitiive = true
+output "dashboard_tunnel_url" {
+  description = "Open this URL after starting the SSH tunnel."
+  value       = "http://127.0.0.1:8088"
 }
