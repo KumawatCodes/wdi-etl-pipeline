@@ -1,0 +1,123 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/EC2", "CPUUtilization", "InstanceId", "i-079665241b02585f8", { "stat": "Average", "label": "Avg CPU %", "color": "#1f77b4" } ],
+          [ "...", { "stat": "Maximum", "label": "Max CPU %", "color": "#d62728" } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-southeast-2",
+        "title": "EC2 Host CPU Utilization (%)",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/EC2", "NetworkIn", "InstanceId", "i-079665241b02585f8", { "stat": "Sum", "label": "Network In (Bytes)", "color": "#2ca02c" } ],
+          [ ".", "NetworkOut", ".", ".", { "stat": "Sum", "label": "Network Out (Bytes)", "color": "#ff7f0e" } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-southeast-2",
+        "title": "Network Traffic (In vs Out)",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/EC2", "StatusCheckFailed", "InstanceId", "i-079665241b02585f8", { "stat": "Maximum", "label": "Status Check Failed (Any)" } ],
+          [ ".", "StatusCheckFailed_Instance", ".", ".", { "stat": "Maximum", "label": "Instance Status Check" } ],
+          [ ".", "StatusCheckFailed_System", ".", ".", { "stat": "Maximum", "label": "System Status Check" } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-southeast-2",
+        "title": "EC2 Health & Status Checks",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "CWAgent", "mem_used_percent", "InstanceId", "i-079665241b02585f8", { "stat": "Average", "label": "Memory Used %", "color": "#9467bd" } ],
+          [ ".", "disk_used_percent", ".", ".", "path", "/", { "stat": "Average", "label": "Root Disk Used %", "color": "#8c564b" } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-southeast-2",
+        "title": "CloudWatch Agent: Memory & Disk Utilization (%)",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/EC2", "EBSReadBytes", "InstanceId", "i-079665241b02585f8", { "stat": "Sum", "label": "EBS Read Bytes" } ],
+          [ ".", "EBSWriteBytes", ".", ".", { "stat": "Sum", "label": "EBS Write Bytes" } ]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-southeast-2",
+        "title": "EBS Storage I/O Throughput",
+        "period": 300
+      }
+    },
+    {
+      "type": "text",
+      "x": 12,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "markdown": "### WDI ETL Pipeline & Superset Observability\n\n- **Host Instance:** `i-079665241b02585f8` (m7i-flex.large)\n- **Region:** `ap-southeast-2` (Sydney)\n- **Storage:** 40 GiB Encrypted gp3 Root EBS Volume\n- **Services:** PostgreSQL 17.6 + Apache Superset 6.0.0 (Docker Compose)\n- **Alarm Configuration:** `WDI-EC2-HighCPUUtilization` (> 80% for 2 periods)\n- **Security:** Isolated EC2 loopback; zero public ingress for DB or BI."
+      }
+    }
+  ]
+}

@@ -110,7 +110,7 @@ resource "aws_instance" "wdi_host" {
   disable_api_termination = true
 
   # lifecycle {
-   # prevent_destroy = true
+  # prevent_destroy = true
   #}
 
   tags = {

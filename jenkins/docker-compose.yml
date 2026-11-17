@@ -1,0 +1,30 @@
+name: wdi-jenkins-ci
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wdi-jenkins:lts
+    container_name: wdi-jenkins
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./init.groovy.d:/var/jenkins_home/init.groovy.d:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ..:/var/jenkins_home/wdi-project:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f http://localhost:8080/login || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  jenkins_home:
