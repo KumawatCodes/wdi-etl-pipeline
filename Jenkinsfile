@@ -110,6 +110,9 @@ pipeline {
                     echo "Checking Terraform formatting..."
                     terraform -chdir=terraform fmt -check -diff
 
+                    echo "Initializing Terraform (backend disabled for CI)..."
+                    terraform -chdir=terraform init -backend=false
+
                     echo "Validating Terraform configuration..."
                     terraform -chdir=terraform validate
                 '''
