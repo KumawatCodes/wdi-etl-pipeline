@@ -157,3 +157,14 @@ To prevent accidental production data corruption, **automated continuous deploym
 1. Database schema and data changes require verified custom-format dumps (`scripts/backup_db.sh`).
 2. Remote deployment is guarded by `scripts/deploy.sh` and only applies to empty databases to prevent overwrites.
 3. Terraform state changes are operator-reviewed before `apply`.
+
+---
+
+## 6. GitHub SCM Polling Integration
+
+The pipeline is integrated directly with the remote GitHub repository using **Poll SCM**:
+- **Repository URL:** `https://github.com/KumawatCodes/wdi-etl-pipeline.git`
+- **Tracked Branch:** `*/master`
+- **Schedule:** `H/3 * * * *` (evaluates upstream Git changes approximately every 3 minutes)
+- **Local Isolation:** Jenkins operates in an internal Docker network without public webhooks, tunnels (ngrok/Cloudflare), or reverse proxies.
+- **Trigger Behavior:** Detects pushed commits on `origin/master`, fetches updated source code, and automatically executes all validation and test stages.
